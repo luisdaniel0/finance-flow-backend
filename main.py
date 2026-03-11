@@ -40,7 +40,7 @@ async def root():
 @app.get("/transactions/")
 async def get_transactions(db=Depends(get_db)):
 
-    transactions = db.query(TransactionModel).all()
+    transactions = db.query(TransactionModel).order_by(TransactionModel.id).all()
     return transactions
 
 
@@ -69,6 +69,27 @@ async def get_single_transaction(transaction_id: int, db=Depends(get_db)):
     return transaction
 
 
+@app.put("/transactions/{transaction_id}")
+async def edit_transaction(
+    transaction: Transaction, transaction_id: int, db=Depends(get_db)
+):
+    edit_transaction = (
+        db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
+    )
+
+    if edit_transaction is None:
+        raise HTTPException(status_code=404, detail="Transaction Not Found")
+
+    edit_transaction.amount = transaction.amount
+    edit_transaction.category = transaction.category
+    edit_transaction.type = transaction.type
+    edit_transaction.date = transaction.date
+
+    db.commit()
+    db.refresh(edit_transaction)
+    return edit_transaction
+
+
 @app.delete("/transactions/{transaction_id}")
 async def delete_transaction(transaction_id: int, db=Depends(get_db)):
     transaction = (
@@ -83,7 +104,7 @@ async def delete_transaction(transaction_id: int, db=Depends(get_db)):
 
 @app.get("/budgets/")
 async def get_budgets(db=Depends(get_db)):
-    budgets = db.query(BudgetModel).all()
+    budgets = db.query(BudgetModel).order_by(BudgetModel.id).all()
     return budgets
 
 
@@ -115,3 +136,17 @@ async def delete_budget(budget_id: int, db=Depends(get_db)):
     db.delete(budget)
     db.commit()
     return budget
+
+
+@app.put("/budgets/{budget_id}")
+async def update_budget(budget: Budget, budget_id: int, db=Depends(get_db)):
+    edit_budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id).first()
+    if edit_budget is None:
+        raise HTTPException(status_code=404, detail="Budget Not Found")
+
+    edit_budget.name = budget.name
+    edit_budget.amount = budget.amount
+    edit_budget.category = budget.category
+    db.commit()
+    db.refresh(edit_budget)
+    return edit_budget
