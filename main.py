@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from database import engine, SessionLocal, Base
 from models import Transaction as TransactionModel
@@ -59,6 +59,16 @@ async def create_transaction(transaction: Transaction, db=Depends(get_db)):
     return new_transaction
 
 
+@app.get("/transactions/{transaction_id}")
+async def get_single_transaction(transaction_id: int, db=Depends(get_db)):
+    transaction = (
+        db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
+    )
+    if transaction is None:
+        raise HTTPException(status_code=404, detail="Transaction Not Found")
+    return transaction
+
+
 @app.get("/budgets/")
 async def get_budgets(db=Depends(get_db)):
     budgets = db.query(BudgetModel).all()
@@ -75,3 +85,21 @@ async def create_budgets(budget: Budget, db=Depends(get_db)):
     db.commit()
     db.refresh(new_budget)
     return new_budget
+
+
+@app.get("/budgets/{budget_id}")
+async def get_single_budget(budget_id: int, db=Depends(get_db)):
+    budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id).first()
+
+    return budget
+
+
+@app.delete("/budgets/{budget_id}")
+async def delete_budget(budget_id: int, db=Depends(get_db)):
+    budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id).first()
+    if budget is None:
+        raise HTTPException(status_code=404, detail="Budget Not Found")
+
+    db.delete(budget)
+    db.commit()
+    return budget
