@@ -69,6 +69,18 @@ async def get_single_transaction(transaction_id: int, db=Depends(get_db)):
     return transaction
 
 
+@app.delete("/transactions/{transaction_id}")
+async def delete_transaction(transaction_id: int, db=Depends(get_db)):
+    transaction = (
+        db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
+    )
+    if transaction is None:
+        raise HTTPException(status_code=404, detail="Transaction Not Found")
+    db.delete(transaction)
+    db.commit()
+    return transaction
+
+
 @app.get("/budgets/")
 async def get_budgets(db=Depends(get_db)):
     budgets = db.query(BudgetModel).all()
