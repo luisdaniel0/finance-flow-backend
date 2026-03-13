@@ -3,6 +3,10 @@ from pydantic import BaseModel
 from database import engine, SessionLocal, Base
 from models import Transaction as TransactionModel
 from models import Budget as BudgetModel
+from models import User as UserModel
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"])
 
 
 Base.metadata.create_all(bind=engine)
@@ -27,6 +31,12 @@ class Budget(BaseModel):  # pydantic
     name: str
     amount: float
     category: str
+
+
+class User(BaseModel):
+    username: str
+    password: str
+    email: str
 
 
 app = FastAPI()
@@ -150,3 +160,33 @@ async def update_budget(budget: Budget, budget_id: int, db=Depends(get_db)):
     db.commit()
     db.refresh(edit_budget)
     return edit_budget
+
+
+@app.post("/users/sign-up")
+async def create_user(user: User, db=Depends(get_db)):
+    find_user = db.query(UserModel).filter(UserModel.username == user.username).first()
+
+    if find_user is not None:
+        raise HTTPException(status_code=409, detail="User already exists")
+
+    new_user = UserModel(
+        username=user.username,
+        hashed_password=pwd_context.hash(user.password),
+        email=user.email,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+
+@app.post("/users/login")
+async def user_login(user: User, pwd: str, db=Depends(get_db)):
+    find_user = db.query(UserModel).filter(UserModel.username == user.username)
+
+    if find_user is None:
+        raise HTTPException(status_code=404, detail="User Not Found")
+
+    if pwd_context.verify(pwd, UserModel.hashed_password) is True:
+        return "Success!"
