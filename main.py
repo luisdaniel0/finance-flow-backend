@@ -182,11 +182,13 @@ async def create_user(user: User, db=Depends(get_db)):
 
 
 @app.post("/users/login")
-async def user_login(user: User, pwd: str, db=Depends(get_db)):
-    find_user = db.query(UserModel).filter(UserModel.username == user.username)
+async def user_login(user: User, db=Depends(get_db)):
+    find_user = db.query(UserModel).filter(UserModel.username == user.username).first()
 
     if find_user is None:
         raise HTTPException(status_code=404, detail="User Not Found")
 
-    if pwd_context.verify(pwd, UserModel.hashed_password) is True:
+    if pwd_context.verify(user.password, find_user.hashed_password) is True:
         return "Success!"
+    else:
+        raise HTTPException(status_code=401, detail="Incorrect password")
