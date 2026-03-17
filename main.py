@@ -5,6 +5,23 @@ from models import Transaction as TransactionModel
 from models import Budget as BudgetModel
 from models import User as UserModel
 from passlib.context import CryptContext
+from jose import jwt
+from datetime import datetime, timedelta, timezone
+
+SECRET_KEY = "SUPERSECRETCODE123"
+ALGORITHM = "HS256"
+
+
+def create_token(username):
+    user_info = {
+        "sub": username,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
+    }
+
+    encoded_user = jwt.encode(user_info, SECRET_KEY, algorithm=ALGORITHM)
+
+    return encoded_user
+
 
 pwd_context = CryptContext(schemes=["bcrypt"])
 
@@ -189,6 +206,6 @@ async def user_login(user: User, db=Depends(get_db)):
         raise HTTPException(status_code=404, detail="User Not Found")
 
     if pwd_context.verify(user.password, find_user.hashed_password) is True:
-        return "Success!"
+        return create_token(user.username)
     else:
         raise HTTPException(status_code=401, detail="Incorrect password")
