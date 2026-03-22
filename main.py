@@ -7,9 +7,13 @@ from models import User as UserModel
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta, timezone
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
 
 SECRET_KEY = "SUPERSECRETCODE123"
 ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
 def create_token(username):
@@ -21,6 +25,20 @@ def create_token(username):
     encoded_user = jwt.encode(user_info, SECRET_KEY, algorithm=ALGORITHM)
 
     return encoded_user
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+
+    except Exception:
+        raise credentials_exception
+
+    return username
 
 
 pwd_context = CryptContext(schemes=["bcrypt"])
@@ -56,6 +74,11 @@ class User(BaseModel):
     email: str
 
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
 app = FastAPI()
 
 
@@ -65,14 +88,16 @@ async def root():
 
 
 @app.get("/transactions/")
-async def get_transactions(db=Depends(get_db)):
+async def get_transactions(db=Depends(get_db), current_user=Depends(get_current_user)):
 
     transactions = db.query(TransactionModel).order_by(TransactionModel.id).all()
     return transactions
 
 
 @app.post("/transactions/")
-async def create_transaction(transaction: Transaction, db=Depends(get_db)):
+async def create_transaction(
+    transaction: Transaction, db=Depends(get_db), current_user=Depends(get_current_user)
+):
     new_transaction = TransactionModel(
         amount=transaction.amount,
         category=transaction.category,
@@ -87,7 +112,9 @@ async def create_transaction(transaction: Transaction, db=Depends(get_db)):
 
 
 @app.get("/transactions/{transaction_id}")
-async def get_single_transaction(transaction_id: int, db=Depends(get_db)):
+async def get_single_transaction(
+    transaction_id: int, db=Depends(get_db), current_user=Depends(get_current_user)
+):
     transaction = (
         db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
     )
@@ -98,7 +125,10 @@ async def get_single_transaction(transaction_id: int, db=Depends(get_db)):
 
 @app.put("/transactions/{transaction_id}")
 async def edit_transaction(
-    transaction: Transaction, transaction_id: int, db=Depends(get_db)
+    transaction: Transaction,
+    transaction_id: int,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     edit_transaction = (
         db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
@@ -118,7 +148,9 @@ async def edit_transaction(
 
 
 @app.delete("/transactions/{transaction_id}")
-async def delete_transaction(transaction_id: int, db=Depends(get_db)):
+async def delete_transaction(
+    transaction_id: int, db=Depends(get_db), current_user=Depends(get_current_user)
+):
     transaction = (
         db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
     )
@@ -130,13 +162,15 @@ async def delete_transaction(transaction_id: int, db=Depends(get_db)):
 
 
 @app.get("/budgets/")
-async def get_budgets(db=Depends(get_db)):
+async def get_budgets(db=Depends(get_db), current_user=Depends(get_current_user)):
     budgets = db.query(BudgetModel).order_by(BudgetModel.id).all()
     return budgets
 
 
 @app.post("/budgets/")
-async def create_budgets(budget: Budget, db=Depends(get_db)):
+async def create_budgets(
+    budget: Budget, db=Depends(get_db), current_user=Depends(get_current_user)
+):
     new_budget = BudgetModel(
         name=budget.name, amount=budget.amount, category=budget.category
     )
@@ -148,14 +182,18 @@ async def create_budgets(budget: Budget, db=Depends(get_db)):
 
 
 @app.get("/budgets/{budget_id}")
-async def get_single_budget(budget_id: int, db=Depends(get_db)):
+async def get_single_budget(
+    budget_id: int, db=Depends(get_db), current_user=Depends(get_current_user)
+):
     budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id).first()
 
     return budget
 
 
 @app.delete("/budgets/{budget_id}")
-async def delete_budget(budget_id: int, db=Depends(get_db)):
+async def delete_budget(
+    budget_id: int, db=Depends(get_db), current_user=Depends(get_current_user)
+):
     budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id).first()
     if budget is None:
         raise HTTPException(status_code=404, detail="Budget Not Found")
@@ -166,7 +204,12 @@ async def delete_budget(budget_id: int, db=Depends(get_db)):
 
 
 @app.put("/budgets/{budget_id}")
-async def update_budget(budget: Budget, budget_id: int, db=Depends(get_db)):
+async def update_budget(
+    budget: Budget,
+    budget_id: int,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     edit_budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id).first()
     if edit_budget is None:
         raise HTTPException(status_code=404, detail="Budget Not Found")
