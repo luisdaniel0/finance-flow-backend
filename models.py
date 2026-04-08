@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String
+from sqlalchemy import Column, Integer, Float, String, ForeignKey
 
 from database import Base
 
@@ -10,6 +10,7 @@ class Transaction(Base):
     date = Column(String)
     category = Column(String)
     type = Column(String)
+    user_id = Column(Integer, ForeignKey("users.id"))
 
 
 class Budget(Base):
@@ -18,6 +19,7 @@ class Budget(Base):
     name = Column(String)
     amount = Column(Float)
     category = Column(String)
+    user_id = Column(Integer, ForeignKey("users.id"))
 
 
 class User(Base):
