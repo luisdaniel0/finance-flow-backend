@@ -94,7 +94,7 @@ async def root():
 @app.get("/transactions/")
 async def get_transactions(db=Depends(get_db), current_user=Depends(get_current_user)):
 
-    transactions = db.query(TransactionModel).order_by(TransactionModel.id).all()
+    transactions = db.query(TransactionModel).filter(TransactionModel.user_id == current_user.id).order_by(TransactionModel.id).all()
     return transactions
 
 
@@ -107,6 +107,7 @@ async def create_transaction(
         category=transaction.category,
         type=transaction.type,
         date=transaction.date,
+        user_id=current_user.id,
     )
 
     db.add(new_transaction)
@@ -120,7 +121,7 @@ async def get_single_transaction(
     transaction_id: int, db=Depends(get_db), current_user=Depends(get_current_user)
 ):
     transaction = (
-        db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
+        db.query(TransactionModel).filter(TransactionModel.id == transaction_id, TransactionModel.user_id == current_user.id).first()
     )
     if transaction is None:
         raise HTTPException(status_code=404, detail="Transaction Not Found")
@@ -135,7 +136,7 @@ async def edit_transaction(
     current_user=Depends(get_current_user),
 ):
     edit_transaction = (
-        db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
+        db.query(TransactionModel).filter(TransactionModel.id == transaction_id, TransactionModel.user_id == current_user.id).first()
     )
 
     if edit_transaction is None:
@@ -156,7 +157,7 @@ async def delete_transaction(
     transaction_id: int, db=Depends(get_db), current_user=Depends(get_current_user)
 ):
     transaction = (
-        db.query(TransactionModel).filter(TransactionModel.id == transaction_id).first()
+        db.query(TransactionModel).filter(TransactionModel.id == transaction_id, TransactionModel.user_id == current_user.id).first()
     )
     if transaction is None:
         raise HTTPException(status_code=404, detail="Transaction Not Found")
@@ -167,7 +168,7 @@ async def delete_transaction(
 
 @app.get("/budgets/")
 async def get_budgets(db=Depends(get_db), current_user=Depends(get_current_user)):
-    budgets = db.query(BudgetModel).order_by(BudgetModel.id).all()
+    budgets = db.query(BudgetModel).filter(BudgetModel.user_id == current_user.id).order_by(BudgetModel.id).all()
     return budgets
 
 
@@ -176,7 +177,7 @@ async def create_budgets(
     budget: Budget, db=Depends(get_db), current_user=Depends(get_current_user)
 ):
     new_budget = BudgetModel(
-        name=budget.name, amount=budget.amount, category=budget.category
+        name=budget.name, amount=budget.amount, category=budget.category, user_id=current_user.id
     )
 
     db.add(new_budget)
@@ -189,7 +190,7 @@ async def create_budgets(
 async def get_single_budget(
     budget_id: int, db=Depends(get_db), current_user=Depends(get_current_user)
 ):
-    budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id).first()
+    budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id, BudgetModel.user_id == current_user.id).first()
 
     return budget
 
@@ -198,7 +199,7 @@ async def get_single_budget(
 async def delete_budget(
     budget_id: int, db=Depends(get_db), current_user=Depends(get_current_user)
 ):
-    budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id).first()
+    budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id, BudgetModel.user_id == current_user.id).first()
     if budget is None:
         raise HTTPException(status_code=404, detail="Budget Not Found")
 
@@ -214,7 +215,7 @@ async def update_budget(
     db=Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    edit_budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id).first()
+    edit_budget = db.query(BudgetModel).filter(BudgetModel.id == budget_id, BudgetModel.user_id == current_user.id).first()
     if edit_budget is None:
         raise HTTPException(status_code=404, detail="Budget Not Found")
 
