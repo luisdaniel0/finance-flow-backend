@@ -278,7 +278,9 @@ async def update_budget(
 
 @app.post("/users/sign-up")
 async def create_user(user: User, db=Depends(get_db)):
-    find_user = db.query(UserModel).filter(UserModel.username == user.username).first()
+    find_user = db.query(UserModel).filter(
+        (UserModel.username == user.username) | (UserModel.email == user.email)
+    ).first()
 
     if find_user is not None:
         raise HTTPException(status_code=409, detail="User already exists")
