@@ -62,6 +62,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_d
 
 class Transaction(BaseModel):  # pydantic
     amount: float
+    description: str
     category: str
     date: str
     type: str
@@ -118,6 +119,7 @@ async def create_transaction(
 ):
     new_transaction = TransactionModel(
         amount=transaction.amount,
+        description=transaction.description,
         category=transaction.category,
         type=transaction.type,
         date=transaction.date,
@@ -167,6 +169,7 @@ async def edit_transaction(
         raise HTTPException(status_code=404, detail="Transaction Not Found")
 
     edit_transaction.amount = transaction.amount
+    edit_transaction.description = transaction.description
     edit_transaction.category = transaction.category
     edit_transaction.type = transaction.type
     edit_transaction.date = transaction.date
@@ -278,9 +281,11 @@ async def update_budget(
 
 @app.post("/users/sign-up")
 async def create_user(user: User, db=Depends(get_db)):
-    find_user = db.query(UserModel).filter(
-        (UserModel.username == user.username) | (UserModel.email == user.email)
-    ).first()
+    find_user = (
+        db.query(UserModel)
+        .filter((UserModel.username == user.username) | (UserModel.email == user.email))
+        .first()
+    )
 
     if find_user is not None:
         raise HTTPException(status_code=409, detail="User already exists")
